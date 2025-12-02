@@ -1,0 +1,698 @@
+● 我理解您的需求。這是一個重要的功能擴展，讓我先確認一些細節，以便提供最適合的架構設計：
+
+● User answered Claude's questions:
+  ⎿  · 「團集會」和「綠生活」這兩種類型，在登錄時需要哪些不同的欄位？ → 每種類型都有完全不同的欄位配置
+     · 類型的管理方式希望如何設計？ → 管理員可動態新增類型和配置欄位
+     · 地圖上的地點標記是否需要根據類型有不同顯示？ → 不同類型使用不同圖示/顏色, 可以按類型篩選地點, 類型只用於分類，地圖顯示不變
+
+● 非常好！根據您的需求，我需要設計一個彈性的類型與動態欄位系統。這是一個相當複雜的功能，讓我為您規劃完整的架構方案：
+
+● 架構設計方案
+
+  1. 資料模型設計
+
+  新增：location_types 集合
+
+  {
+    id: "team-gathering",           // 類型 ID
+    name: "團集會場地",              // 顯示名稱
+    description: "荒野團集會場地",   // 描述
+    icon: "meeting-room",            // 地圖圖示代碼
+    color: "#4CAF50",                // 地圖標記顏色
+    order: 1,                        // 排序順序
+    isActive: true,                  // 是否啟用
+
+    // 欄位配置（這是核心）
+    fieldSchema: [
+      {
+        fieldId: "capacity",         // 欄位 ID
+        label: "場地容納人數",        // 欄位標籤
+        type: "number",              // 欄位類型
+        required: true,              // 是否必填
+        order: 1,                    // 顯示順序
+        placeholder: "請輸入人數",
+        validation: {
+          min: 1,
+          max: 1000
+        },
+        displayInList: true,         // 是否在列表中顯示
+        displayInDetail: true        // 是否在詳情中顯示
+      },
+      {
+        fieldId: "equipment",
+        label: "可用設備",
+        type: "multi-select",        // 多選
+        required: false,
+        order: 2,
+        options: [
+          { value: "projector", label: "投影設備" },
+          { value: "whiteboard", label: "白板" },
+          { value: "tables", label: "桌椅" },
+          { value: "kitchen", label: "廚房" }
+        ],
+        displayInList: true,
+        displayInDetail: true
+      },
+      {
+        fieldId: "fee",
+        label: "使用費用",
+        type: "text",
+        required: false,
+        order: 3,
+        placeholder: "例如：免費、500元/小時",
+        displayInList: true,
+        displayInDetail: true
+      },
+      {
+        fieldId: "bookingMethod",
+        label: "預約方式",
+        type: "textarea",
+        required: false,
+        order: 4,
+        placeholder: "說明如何預約此場地",
+        displayInDetail: true
+      }
+    ],
+
+    // 保留原有的共同欄位
+    commonFields: {
+      name: true,           // 地點名稱（必填）
+      address: true,        // 地址（必填）
+      description: true,    // 基本描述（選填）
+      photos: true,         // 照片（必填）
+      tags: true           // 標籤（選填）
+    },
+
+    createdAt: Timestamp,
+    updatedAt: Timestamp
+  }
+
+  修改：locations 集合
+
+  {
+    // === 新增欄位 ===
+    typeId: "team-gathering",       // 類型 ID（必填）
+
+    // === 動態欄位儲存 ===
+    dynamicFields: {
+      capacity: 50,
+      equipment: ["projector", "whiteboard"],
+      fee: "免費",
+      bookingMethod: "請提前一週聯絡場地負責人"
+    },
+
+    // === 原有欄位保持不變 ===
+    name: string,
+    address: string,
+    description: string,
+    position: GeoPoint,
+    photoURLs: string[],
+    tags: string[],
+    status: 'approved',
+    submitterInfo: {...},
+    createdAt: Timestamp,
+    updatedAt: Timestamp
+  }
+
+  2. 支援的欄位類型
+
+  const FIELD_TYPES = {
+    // 基本類型
+    text: "單行文字",
+    textarea: "多行文字",
+    number: "數字",
+
+    // 選擇類型
+    select: "單選下拉選單",
+    multiSelect: "多選下拉選單",
+    radio: "單選按鈕",
+    checkbox: "多選核取方塊",
+
+    // 日期時間
+    date: "日期",
+    time: "時間",
+    datetime: "日期時間",
+
+    // 布林值
+    boolean: "是/否開關",
+
+    // 未來擴展
+    url: "網址",
+    email: "Email",
+    phone: "電話",
+    file: "檔案上傳",
+    richText: "富文本編輯器"
+  };
+
+  3. 前端實作架構
+
+  A. 動態表單生成器
+
+  // components/DynamicForm/DynamicForm.jsx
+  // 根據 fieldSchema 自動生成表單
+  // 處理驗證、提交、錯誤顯示
+
+  B. 類型管理介面（管理員專用）
+
+  /admin/location-types
+  ├─ 類型列表
+  ├─ 新增類型
+  │  ├─ 基本資訊（名稱、描述、圖示、顏色）
+  │  └─ 欄位配置器（拖拉排序、新增/編輯/刪除欄位）
+  ├─ 編輯類型
+  └─ 刪除類型（檢查使用情況）
+
+  C. 地點登錄流程
+
+  1. 選擇類型 → 2. 填寫共同欄位 → 3. 填寫類型專屬欄位 → 4. 提交
+
+  4. 地圖視覺化方案
+
+  圖示系統
+
+  // 預設圖示映射
+  const LOCATION_ICONS = {
+    "team-gathering": {
+      url: "/icons/meeting-room.svg",
+      color: "#4CAF50",
+      scale: 1.2
+    },
+    "green-life": {
+      url: "/icons/eco-leaf.svg",
+      color: "#8BC34A",
+      scale: 1.0
+    }
+  };
+
+  // 動態生成 Google Maps Marker
+  marker = new google.maps.Marker({
+    icon: {
+      url: LOCATION_ICONS[location.typeId].url,
+      scaledSize: new google.maps.Size(40, 40),
+      fillColor: LOCATION_ICONS[location.typeId].color
+    }
+  });
+
+  類型篩選 UI
+
+  地圖頂部：
+  [全部] [團集會 🏠] [綠生活 🌿] [其他類型...]
+  [標籤篩選保持不變]
+
+  ---
+  實作順序建議
+
+  階段 1：資料層（1-2 週）
+
+  1. 設計並建立 location_types 集合
+  2. 建立預設類型（團集會、綠生活）
+  3. 修改 locations 集合結構
+  4. 更新 Firestore Security Rules
+
+  階段 2：管理後台（2-3 週）
+
+  5. 類型管理介面（CRUD）
+  6. 欄位配置器（視覺化欄位編輯器）
+  7. 測試動態欄位儲存與讀取
+
+  階段 3：前端表單（2-3 週）
+
+  8. 動態表單生成器
+  9. 類型選擇流程
+  10. 表單驗證與提交
+  11. 待審核地點顯示動態欄位
+
+  階段 4：地圖視覺化（1-2 週）
+
+  12. 圖示系統
+  13. 類型篩選功能
+  14. 地點詳情顯示動態欄位
+
+  階段 5：測試與優化（1 週）
+
+  15. 完整流程測試
+  16. 效能優化
+  17. 文件更新
+
+  ---
+  關鍵技術挑戰
+
+  挑戰 1：動態表單驗證
+
+  - 問題：如何在前端動態驗證不同類型的欄位？
+  - 方案：使用 yup 或 zod 動態生成驗證 schema
+
+  挑戰 2：Firestore 查詢限制
+
+  - 問題：動態欄位存在 map 中，無法直接索引查詢
+  - 方案：僅支援類型和標籤篩選，動態欄位僅用於顯示
+
+  挑戰 3：向後相容性
+
+  - 問題：現有地點沒有 typeId
+  - 方案：
+    - 建立「預設類型」
+    - 資料遷移腳本
+    - 前端容錯處理
+
+  ---
+
+● 下一步行動
+
+  我已經為您設計了完整的架構方案。以下是關鍵要點：
+
+  ✅ 核心設計
+
+  - location_types 集合：儲存類型與動態欄位配置
+  - fieldSchema：定義每個類型的專屬欄位
+  - dynamicFields：在 locations 中儲存動態欄位值
+  - 支援 12+ 種欄位類型：文字、數字、選擇、日期等
+
+  ✅ 管理彈性
+
+  - 管理員可完全自訂類型
+  - 拖拉式欄位配置器
+  - 圖示與顏色自訂
+
+  ✅ 使用者體驗
+
+  - 選擇類型 → 自動產生對應表單
+  - 地圖圖示依類型顯示
+  - 類型 + 標籤雙重篩選
+
+  🤔 需要您確認
+
+  1. 這個架構方案是否符合您的期望？
+  2. 「團集會」需要哪些具體欄位？（例如：容納人數、設備、費用、預約方式）
+  3. 「綠生活」需要哪些具體欄位？（是否與現有欄位相同？）
+  4. 希望我先實作哪個階段？
+    - 建議從階段 1（資料層）開始
+    - 或者先做一個簡化版的 POC（概念驗證）
+
+  請告訴我您的想法，我可以立即開始實作！
+
+> 圖示的部分可以有選擇的功能嗎? 另外分類可以自行新增建議嗎? 前端在地圖呈現的方式是甚麼可以說明一下
+
+● User answered Claude's questions:
+  ⎿  · 「分類可以自行新增建議」是指什麼？ → 我指的是管理者可以自行新增分類與標籤項目
+
+● 完美！讓我詳細說明這三個部分：
+
+  1. 圖示選擇系統
+
+  方案 A：圖示庫選擇器（推薦）
+
+  // 預建圖示庫
+  const ICON_LIBRARY = [
+    // 場地類
+    { id: "meeting-room", name: "會議室", emoji: "🏢", category: "場地" },
+    { id: "park", name: "公園", emoji: "🌳", category: "場地" },
+    { id: "classroom", name: "教室", emoji: "🏫", category: "場地" },
+    { id: "outdoor", name: "戶外場地", emoji: "⛺", category: "場地" },
+
+    // 生活類
+    { id: "restaurant", name: "餐廳", emoji: "🍽️", category: "綠生活" },
+    { id: "shop", name: "商店", emoji: "🏪", category: "綠生活" },
+    { id: "cafe", name: "咖啡廳", emoji: "☕", category: "綠生活" },
+    { id: "eco-store", name: "環保店", emoji: "🌿", category: "綠生活" },
+
+    // 自然類
+    { id: "leaf", name: "葉子", emoji: "🍃", category: "環保" },
+    { id: "recycle", name: "回收", emoji: "♻️", category: "環保" },
+    { id: "tree", name: "樹木", emoji: "🌲", category: "環保" },
+
+    // 活動類
+    { id: "event", name: "活動", emoji: "🎉", category: "活動" },
+    { id: "education", name: "教育", emoji: "📚", category: "活動" }
+  ];
+
+  管理介面實作
+
+  // 類型管理頁面 - 圖示選擇器
+  <LocationTypeForm>
+    {/* 基本資訊 */}
+    <Input label="類型名稱" value="團集會場地" />
+
+    {/* 圖示選擇器 */}
+    <IconPicker
+      label="選擇圖示"
+      value={selectedIcon}
+      onChange={setSelectedIcon}
+    >
+      {/* 分類標籤 */}
+      <Tabs>
+        <Tab>全部</Tab>
+        <Tab>場地 🏢</Tab>
+        <Tab>綠生活 🌿</Tab>
+        <Tab>環保 ♻️</Tab>
+        <Tab>活動 🎉</Tab>
+      </Tabs>
+
+      {/* 圖示網格 */}
+      <IconGrid>
+        {ICON_LIBRARY.map(icon => (
+          <IconButton
+            key={icon.id}
+            selected={selectedIcon === icon.id}
+            onClick={() => setSelectedIcon(icon.id)}
+          >
+            <span className="emoji">{icon.emoji}</span>
+            <span className="name">{icon.name}</span>
+          </IconButton>
+        ))}
+      </IconGrid>
+    </IconPicker>
+
+    {/* 顏色選擇器 */}
+    <ColorPicker
+      label="標記顏色"
+      value={color}
+      onChange={setColor}
+      presets={[
+        "#4CAF50", // 綠色
+        "#2196F3", // 藍色
+        "#FF9800", // 橘色
+        "#E91E63", // 粉紅色
+        "#9C27B0", // 紫色
+        "#F44336", // 紅色
+      ]}
+    />
+
+    {/* 預覽 */}
+    <Preview>
+      <MapMarkerPreview icon={selectedIcon} color={color} />
+    </Preview>
+  </LocationTypeForm>
+
+  ---
+  2. 前端地圖呈現方式
+
+  A. 整體佈局
+
+  ┌─────────────────────────────────────────────────────┐
+  │ 🗺️ 南區綠活圖              [🔍 搜尋地址]  [👤 登入] │
+  ├─────────────────────────────────────────────────────┤
+  │                                                       │
+  │  【類型篩選】━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+  │  [ 全部 ] [ 🏢 團集會 ] [ 🌿 綠生活 ]               │
+  │                                                       │
+  │  【標籤篩選】━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+  │  [ 全部 ] [ 全素 ] [ 環保餐具 ] [ 無包裝 ] ...      │
+  │                                                       │
+  ├─────────────────────────────────────────────────────┤
+  │                                                       │
+  │                    📍 Google Map 區域                │
+  │                                                       │
+  │          🏢50  🌿  🏢30        🌿                    │
+  │                                                       │
+  │      🌿     🏢25        🌿   🌿                      │
+  │                                                       │
+  │                  🏢100    🌿                         │
+  │                                                       │
+  │                                                       │
+  ├─────────────────────────────────────────────────────┤
+  │ ┌─ 地點詳情面板（點擊標記後從底部滑出）──────┐    │
+  │ │ 📸 [照片輪播]                                 │    │
+  │ │ 🏢 荒野台南分會會館                          │    │
+  │ │ 📍 台南市東區東門路二段89號                   │    │
+  │ │ 👤 台南分會-樹蛙 登錄                         │    │
+  │ │                                               │    │
+  │ │ 📋 場地資訊：                                 │    │
+  │ │ • 容納人數：50 人                             │    │
+  │ │ • 可用設備：投影設備、白板、桌椅              │    │
+  │ │ • 使用費用：免費                              │    │
+  │ │ • 預約方式：請提前一週聯絡...                 │    │
+  │ │                                               │    │
+  │ │ 🏷️ 標籤：環保餐具、在地小農                  │    │
+  │ │                                               │    │
+  │ │ [📍 導航] [⚠️ 回報錯誤] [❌ 關閉]           │    │
+  │ └───────────────────────────────────────────┘    │
+  └─────────────────────────────────────────────────────┘
+
+  B. 地圖標記設計
+
+  選項 1：Emoji 標記 + 數字標籤（推薦）
+
+  // 顯示圖示 + 容納人數（如果有的話）
+  🏢50   // 團集會場地，可容納50人
+  🏢     // 團集會場地，無人數資訊
+  🌿     // 綠生活店家
+  ⛺     // 戶外活動場地
+
+  實作方式：
+  function createMarker(location) {
+    const locationType = getLocationType(location.typeId);
+    const icon = locationType.emoji;
+    const capacity = location.dynamicFields?.capacity;
+
+    // 創建自訂 HTML 標記
+    const markerContent = `
+      <div class="custom-marker" style="
+        background: ${locationType.color};
+        border-radius: 20px;
+        padding: 4px 8px;
+        color: white;
+        font-size: 18px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      ">
+        ${icon}${capacity ? capacity : ''}
+      </div>
+    `;
+
+    return new google.maps.marker.AdvancedMarkerElement({
+      position: location.position,
+      content: createMarkerElement(markerContent),
+      title: location.name
+    });
+  }
+
+  選項 2：圖層式圖示
+
+  // 使用 SVG 組合圖示
+  <svg viewBox="0 0 40 40">
+    {/* 底部圓形背景 */}
+    <circle cx="20" cy="20" r="18" fill="#4CAF50" />
+
+    {/* Emoji 或圖示 */}
+    <text x="20" y="28" fontSize="20" textAnchor="middle">
+      🏢
+    </text>
+
+    {/* 小數字標籤（如果有） */}
+    {capacity && (
+      <g>
+        <circle cx="32" cy="10" r="8" fill="#FF5722" />
+        <text x="32" y="13" fontSize="10" fill="white" textAnchor="middle">
+          {capacity}
+        </text>
+      </g>
+    )}
+  </svg>
+
+  C. 互動行為
+
+  1. 類型篩選互動
+
+  使用者操作流程：
+  1. 點擊 [🏢 團集會] 按鈕
+     → 按鈕高亮顯示
+     → 地圖僅顯示團集會類型標記
+     → 其他類型標記隱藏
+
+  2. 再次點擊 [🏢 團集會] 或點擊 [全部]
+     → 取消篩選
+     → 顯示所有類型
+
+  3. 類型篩選 + 標籤篩選可組合使用
+     例如：[🏢 團集會] + [環保餐具]
+     → 只顯示有環保餐具標籤的團集會場地
+
+  2. 標記聚合（Clustering）
+
+  // 當地圖縮小時，相近的標記會聚合
+  [ 5 ]  // 表示此區域有 5 個地點
+    ↓ 放大
+  🏢 🏢 🌿 🌿 🌿  // 顯示個別標記
+
+  // 聚合標記顯示類型分布
+  ┌─────┐
+  │ 8   │  // 總共 8 個地點
+  │🏢×3  │  // 3個團集會
+  │🌿×5  │  // 5個綠生活
+  └─────┘
+
+  3. 地點詳情面板動態內容
+
+  <DetailPanel location={selectedLocation}>
+    {/* 基本資訊（所有類型共用） */}
+    <BasicInfo>
+      <Photos />
+      <Name />
+      <Address />
+      <Submitter />
+    </BasicInfo>
+
+    {/* 動態欄位（依類型顯示） */}
+    <DynamicFields>
+      {locationType.fieldSchema
+        .filter(field => field.displayInDetail)
+        .map(field => (
+          <FieldDisplay
+            key={field.fieldId}
+            label={field.label}
+            value={location.dynamicFields[field.fieldId]}
+            type={field.type}
+          />
+        ))
+      }
+    </DynamicFields>
+
+    {/* 標籤 */}
+    <Tags />
+
+    {/* 操作按鈕 */}
+    <Actions>
+      <Button>📍 導航</Button>
+      {isLoggedIn && <Button>⚠️ 回報錯誤</Button>}
+    </Actions>
+  </DetailPanel>
+
+  D. 響應式設計
+
+  手機版（< 768px）
+
+  ┌──────────────┐
+  │ 🗺️ [🔍] [👤]│
+  ├──────────────┤
+  │ 類型篩選（橫向滑動） │
+  │ 標籤篩選（摺疊） │
+  ├──────────────┤
+  │              │
+  │   地圖區域    │
+  │              │
+  ├──────────────┤
+  │ 詳情面板      │
+  │ （全屏滑出）  │
+  └──────────────┘
+
+  平板/桌面版（> 768px）
+
+  ┌────────────────────────┐
+  │ 篩選區域（固定頂部）    │
+  ├────────────────────────┤
+  │                        │
+  │      地圖區域          │
+  │                        │
+  │  詳情面板（右側滑出）   │
+  └────────────────────────┘
+
+  ---
+  3. 視覺化範例
+
+  類型管理頁面
+
+  ┌─ 新增地點類型 ──────────────────────┐
+  │                                      │
+  │ 類型名稱 *                           │
+  │ [團集會場地_______________]          │
+  │                                      │
+  │ 描述                                 │
+  │ [荒野團集會使用的場地_____]          │
+  │                                      │
+  │ 選擇圖示 *                           │
+  │ ┌────────────────────────┐         │
+  │ │ 場地 🏢 | 綠生活 🌿 | 環保 ♻️   │         │
+  │ ├────────────────────────┤         │
+  │ │ [🏢] [🏫] [🏛️] [⛺]      │         │
+  │ │ [🌳] [🏞️] [🌲] [🎪]      │  ← 可選圖示      │
+  │ └────────────────────────┘         │
+  │                                      │
+  │ 標記顏色 *                           │
+  │ ┌─────────────────┐                │
+  │ │ 🎨 #4CAF50       │                │
+  │ │ [🟢][🔵][🟠][🔴] │  ← 預設顏色     │
+  │ └─────────────────┘                │
+  │                                      │
+  │ 預覽                                 │
+  │ ┌────┐                              │
+  │ │ 🏢 │  ← 實際地圖標記外觀           │
+  │ └────┘                              │
+  │                                      │
+  │ 欄位配置 *                           │
+  │ ┌────────────────────────┐         │
+  │ │ ⋮ 容納人數 (數字) [編輯][刪除]     │
+  │ │ ⋮ 可用設備 (多選) [編輯][刪除]     │
+  │ │ ⋮ 使用費用 (文字) [編輯][刪除]     │
+  │ │ [+ 新增欄位]                      │
+  │ └────────────────────────┘         │
+  │                                      │
+  │          [取消]  [儲存類型]          │
+  └──────────────────────────────────────┘
+
+  ---
+  技術實作重點
+
+  1. 圖示系統
+
+  // config/icons.js
+  export const ICON_LIBRARY = [...]; // 50+ 個預建圖示
+
+  // components/IconPicker.jsx
+  export function IconPicker({ value, onChange }) {
+    // 分類顯示、搜尋、預覽
+  }
+
+  // utils/mapHelpers.js
+  export function createCustomMarker(location, locationType) {
+    // 根據類型配置創建標記
+  }
+
+  2. 標記聚合
+
+  // 使用 @googlemaps/markerclusterer
+  import { MarkerClusterer } from "@googlemaps/markerclusterer";
+
+  const clusterer = new MarkerClusterer({
+    map,
+    markers,
+    renderer: {
+      render: (cluster) => {
+        // 自訂聚合標記外觀
+        const types = getTypesInCluster(cluster);
+        return createClusterMarker(types);
+      }
+    }
+  });
+
+  3. 動態欄位顯示
+
+  // components/DynamicFieldDisplay.jsx
+  export function FieldDisplay({ field, value, type }) {
+    switch (type) {
+      case 'number':
+        return <div>👥 {field.label}: {value} 人</div>;
+      case 'multi-select':
+        return (
+          <div>
+            🔧 {field.label}:
+            {value.map(v => getOptionLabel(field, v)).join('、')}
+          </div>
+        );
+      case 'boolean':
+        return value && <div>✅ {field.label}</div>;
+      default:
+        return <div>{field.label}: {value}</div>;
+    }
+  }
+
+  ---
+  總結
+
+  ✅ 圖示選擇：50+ 預建 emoji 圖示庫 + 顏色選擇器
+  ✅ 管理彈性：管理員可自由新增類型與標籤
+  ✅ 地圖呈現：
+  - 彩色 emoji 標記（可選加數字）
+  - 雙層篩選（類型 + 標籤）
+  - 智能聚合
+  - 滑出式詳情面板
+  - 動態欄位顯示
