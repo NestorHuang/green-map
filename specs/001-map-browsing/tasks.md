@@ -69,6 +69,7 @@
 - [ ] T021 [US1] 建立 MapContainer 元件 src/components/map/MapContainer.tsx（Google Maps 容器，整合 GPS 定位）
 - [ ] T022 [US1] 實作 GPS 權限請求與成功定位邏輯於 MapContainer
 - [ ] T023 [US1] 實作 GPS 失敗/拒絕時的友善提示訊息與回退邏輯（顯示台灣全島視圖）
+- [ ] T023.5 [US1] 實作手動地址輸入備援方案（GPS 失敗時顯示地址輸入框，複用 AddressSearch 元件）
 - [ ] T024 [US1] 建立 MapPage 主頁面 src/pages/MapPage.tsx（整合 MapContainer 和 GPS 狀態）
 
 **Checkpoint**: 使用者故事 1 完成 - 地圖可定位或顯示預設位置
@@ -89,9 +90,9 @@
 - [ ] T028 [P] [US2] 建立 SubmitterInfo 元件 src/components/location/SubmitterInfo.tsx（登錄者資訊顯示，含「團名-自然名」格式）
 - [ ] T029 [US2] 建立 LocationMarker 元件 src/components/map/LocationMarker.tsx（地圖標記）
 - [ ] T030 [US2] 建立 LocationDetail 元件 src/components/map/LocationDetail.tsx（底部彈出詳情面板）
-- [ ] T031 [US2] 實作詳情面板向下滑動手勢關閉功能（行動裝置）
-- [ ] T032 [US2] 實作詳情面板關閉按鈕和點擊外部關閉（桌面版）
-- [ ] T033 [US2] 實作照片載入失敗時顯示預設佔位圖片
+- [ ] T031 [US2] 實作詳情面板多種關閉方式：行動裝置向下滑動手勢 + 關閉按鈕(X)；桌面版點擊外部區域 + 關閉按鈕（對應 FR-012）
+- [ ] T032 [US2] [已合併至 T031] ~~實作詳情面板關閉按鈕和點擊外部關閉（桌面版）~~
+- [ ] T033 [US2] 實作照片載入失敗時顯示預設佔位圖片（對應 FR-015）
 - [ ] T034 [US2] 實作「回報此地點資訊有誤」按鈕（僅已登入使用者顯示，按鈕邏輯為預留，實際功能在後續功能實作）
 - [ ] T035 [US2] 整合 LocationMarker 和 LocationDetail 到 MapContainer
 
@@ -146,6 +147,16 @@
 - [ ] T050 建立種子資料腳本 scripts/seedTags.ts（初始化預設標籤）
 - [ ] T051 執行 quickstart.md 測試檢查清單驗證
 - [ ] T052 [P] 程式碼清理與重構
+
+---
+
+## Phase 8: Edge Case Handling (邊界情況處理)
+
+**Purpose**: 處理規格中識別的邊界情況
+
+- [ ] T053 [邊界] 實作無地點標記時的提示訊息於 MapContainer（顯示「目前區域尚無綠色生活地點」）
+- [ ] T054 [邊界] 實作快速連續點擊標記的 debounce 處理於 LocationMarker（300ms debounce，僅顯示最後點擊地點）
+- [ ] T055 [邊界] 實作篩選無結果時的提示訊息於 TagFilter（顯示「沒有符合篩選條件的地點」）
 
 ---
 
