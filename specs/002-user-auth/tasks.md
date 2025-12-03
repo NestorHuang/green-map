@@ -64,7 +64,7 @@ Based on plan.md:
 - [ ] T015 [US1] Implement register function in AuthContext (Firebase Auth createUserWithEmailAndPassword + Firestore user document) in src/contexts/AuthContext.tsx
 - [ ] T016 [US1] Implement login function in AuthContext (Firebase Auth signInWithEmailAndPassword) in src/contexts/AuthContext.tsx
 - [ ] T017 [US1] Implement logout function and auth state listener (onAuthStateChanged) in src/contexts/AuthContext.tsx
-- [ ] T018 [US1] Implement resendVerificationEmail function with 1-minute cooldown (localStorage) in src/contexts/AuthContext.tsx
+- [ ] T018 [US1] Implement resendVerificationEmail function with 1-minute cooldown (localStorage) in src/contexts/AuthContext.tsx - cooldown 清除策略：登出時清除、過期後自動清除、頁面重新載入時驗證 timestamp 有效性
 - [ ] T019 [P] [US1] Create LoginPage in src/pages/LoginPage.tsx
 - [ ] T020 [P] [US1] Create RegisterPage in src/pages/RegisterPage.tsx
 - [ ] T021 [US1] Add routing for auth pages in src/App.tsx or src/router/index.tsx
@@ -84,7 +84,7 @@ Based on plan.md:
 
 - [ ] T023 [P] [US2] Create setWildernessPartner Cloud Function in functions/src/claims/setWildernessPartner.ts
 - [ ] T024 [P] [US2] Create WildernessPartnerForm component in src/components/profile/WildernessPartnerForm.tsx
-- [ ] T025 [US2] Create useWildernessPartner hook to call Cloud Function in src/hooks/useWildernessPartner.ts
+- [ ] T025 [US2] Create useWildernessPartner hook to call Cloud Function in src/hooks/useWildernessPartner.ts - 在 Cloud Function 成功後必須調用 `await user.getIdToken(true)` 和 `await user.reload()` 強制重新整理 Token 以同步 Custom Claims
 - [ ] T026 [US2] Update AuthContext to include isWildernessPartner from Custom Claims in src/contexts/AuthContext.tsx
 - [ ] T027 [US2] Integrate WildernessPartnerForm into ProfilePage in src/pages/ProfilePage.tsx
 - [ ] T028 [US2] Deploy setWildernessPartner Cloud Function via `firebase deploy --only functions:setWildernessPartner`
@@ -102,7 +102,7 @@ Based on plan.md:
 ### Implementation for User Story 3
 
 - [ ] T029 [P] [US3] Create AvatarUploader component with react-image-crop in src/components/profile/AvatarUploader.tsx
-- [ ] T030 [P] [US3] Create processAvatar Cloud Function (Sharp 壓縮 + 縮圖) in functions/src/storage/processAvatar.ts
+- [ ] T030 [P] [US3] Create processAvatar Cloud Function (Sharp 壓縮 + 縮圖) in functions/src/storage/processAvatar.ts - 實作錯誤處理：失敗時重試 3 次，仍失敗則記錄錯誤並使用原圖作為 fallback，確保頭像至少有一個可用版本
 - [ ] T031 [P] [US3] Create ProfileView component in src/components/profile/ProfileView.tsx
 - [ ] T032 [P] [US3] Create ProfileEditForm component in src/components/profile/ProfileEditForm.tsx
 - [ ] T033 [US3] Create useUser hook for user document CRUD in src/hooks/useUser.ts
@@ -125,7 +125,7 @@ Based on plan.md:
 - [ ] T037 [P] [US4] Create MySubmissionsList component in src/components/profile/MySubmissionsList.tsx
 - [ ] T038 [P] [US4] Create SubmissionStatus component in src/components/location/SubmissionStatus.tsx
 - [ ] T039 [US4] Create useMySubmissions hook for fetching user's locations in src/hooks/useMySubmissions.ts
-- [ ] T040 [US4] Integrate MySubmissionsList into ProfilePage as tab in src/pages/ProfilePage.tsx
+- [ ] T040 [US4] Integrate MySubmissionsList into ProfilePage as tab in src/pages/ProfilePage.tsx - 待審核地點顯示「編輯」按鈕，點擊後使用 React Router 導向地點提交表單（Epic 003）並透過 query params 傳遞地點 ID 以預填資料
 - [ ] T041 [US4] Add Firestore index for (submittedBy + createdAt) query via firestore.indexes.json
 
 **Checkpoint**: User Story 4 - 使用者可以查看自己的提交記錄及狀態

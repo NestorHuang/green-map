@@ -54,7 +54,7 @@
 
 ### UserDocument (使用者文件)
 
-**Firestore 路徑**: `/users/{userId}`
+**Firestore 路徑**: `/users/{userId}` (文件規範：所有 Firestore 路徑統一使用前導斜線格式)
 
 | 欄位 | 類型 | 必填 | 說明 |
 |------|------|------|------|
@@ -73,9 +73,9 @@
 
 | 欄位 | 類型 | 必填 | 說明 |
 |------|------|------|------|
-| `wildernessId` | string | ✅ | 荒野編號 (使用者自填) |
-| `chapter` | string | ✅ | 所屬分會 |
-| `natureName` | string | ✅ | 自然名 |
+| `wildernessId` | string | ✅ | 荒野編號 (使用者自填, 1-50 字元) |
+| `chapter` | string | ✅ | 所屬分會 (UI 顯示：「團名/分會」, 1-30 字元) |
+| `natureName` | string | ✅ | 自然名 (2-20 字元) |
 | `filledAt` | Timestamp | ✅ | 首次填寫時間 |
 | `updatedAt` | Timestamp | ✅ | 最後更新時間 |
 

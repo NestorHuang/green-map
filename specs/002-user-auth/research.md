@@ -86,7 +86,23 @@ export const setWildernessPartner = onCall(async (request) => {
   
   return { success: true };
 });
+
+// 前端：強制重新整理 Token 以同步 Custom Claims
+await setWildernessPartner(); // 調用 Cloud Function
+const user = auth.currentUser;
+if (user) {
+  // 強制重新整理 Token（true = 強制從伺服器取得最新 Token）
+  await user.getIdToken(true);
+  // 重新載入使用者資料以觸發 AuthContext 更新
+  await user.reload();
+}
 ```
+
+**Token 同步機制說明**:
+- Cloud Function 更新 Custom Claims 後，Token 不會立即更新
+- 必須調用 `getIdToken(true)` 強制從伺服器取得新 Token
+- `reload()` 觸發 `onAuthStateChanged` 事件，讓 AuthContext 更新
+- 整個流程從 Cloud Function 調用到前端生效應在 2 秒內完成（見 SC-004）
 
 ### 考慮的替代方案
 
