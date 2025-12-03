@@ -1,0 +1,307 @@
+openapi: 3.0.3
+info:
+  title: 地點提交與貢獻 API
+  description: |
+    Green Map South 地點提交相關 API。
+    
+    此 API 主要描述 Firestore 資料結構與 Storage 上傳規範，
+    實際操作透過 Firebase SDK 進行。
+  version: 1.0.0
+
+servers:
+  - url: https://firestore.googleapis.com/v1/projects/{project}/databases/(default)
+    variables:
+      project:
+        default: green-map-south
+
+paths:
+  /locations:
+    post:
+      summary: 提交新地點
+      description: |
+        建立新的地點文件。需要已登入且 Email 已驗證的使用者。
+        透過 Firebase SDK `addDoc()` 呼叫。
+      operationId: createLocation
+      tags:
+        - 地點
+      security:
+        - firebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLocationRequest'
+      responses:
+        '200':
+          description: 成功建立地點
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationResponse'
+        '401':
+          description: 未認證或 Email 未驗證
+        '400':
+          description: 請求參數錯誤
+        '429':
+          description: 超過每日提交限制
+
+  /locations/{locationId}:
+    get:
+      summary: 取得地點詳情
+      description: |
+        取得指定地點的詳細資訊。
+        已核准的地點所有人可查看，pending 狀態只有提交者和管理員可查看。
+      operationId: getLocation
+      tags:
+        - 地點
+      parameters:
+        - name: locationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功取得地點
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationResponse'
+        '404':
+          description: 地點不存在
+        '403':
+          description: 無權查看
+
+    patch:
+      summary: 更新地點資訊
+      description: |
+        更新自己提交且狀態為 pending 的地點。
+        透過 Firebase SDK `updateDoc()` 呼叫。
+      operationId: updateLocation
+      tags:
+        - 地點
+      security:
+        - firebaseAuth: []
+      parameters:
+        - name: locationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLocationRequest'
+      responses:
+        '200':
+          description: 成功更新地點
+        '401':
+          description: 未認證
+        '403':
+          description: 無權編輯（非自己的地點或非 pending 狀態）
+        '404':
+          description: 地點不存在
+
+  /tags:
+    get:
+      summary: 取得所有標籤
+      description: |
+        取得所有可用的綠活標籤列表。
+        透過 Firebase SDK `getDocs()` 呼叫。
+      operationId: getTags
+      tags:
+        - 標籤
+      responses:
+        '200':
+          description: 成功取得標籤列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tag'
+
+components:
+  securitySchemes:
+    firebaseAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Firebase ID Token (需 email_verified: true)
+
+  schemas:
+    CreateLocationRequest:
+      type: object
+      required:
+        - name
+        - address
+        - coordinates
+        - description
+        - tagIds
+        - photoURLs
+      properties:
+        name:
+          type: string
+          description: 地點名稱
+          minLength: 3
+          maxLength: 100
+          example: "好食光蔬食餐廳"
+        address:
+          type: string
+          description: 地址
+          example: "台南市中西區民族路二段76號"
+        coordinates:
+          type: object
+          description: 經緯度座標
+          required:
+            - lat
+            - lng
+          properties:
+            lat:
+              type: number
+              example: 22.9912
+            lng:
+              type: number
+              example: 120.2055
+        description:
+          type: string
+          description: 地點描述
+          minLength: 10
+          maxLength: 1000
+          example: "提供多樣化的蔬食料理，食材來自在地小農。環境舒適，適合家庭聚餐。"
+        tagIds:
+          type: array
+          description: 標籤 ID 陣列
+          items:
+            type: string
+          minItems: 1
+          maxItems: 5
+          example: ["vegan", "local-produce"]
+        photoURLs:
+          type: array
+          description: 照片 URL 陣列
+          items:
+            type: string
+            format: uri
+          minItems: 1
+          maxItems: 5
+
+    UpdateLocationRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 100
+        address:
+          type: string
+        coordinates:
+          type: object
+          properties:
+            lat:
+              type: number
+            lng:
+              type: number
+        description:
+          type: string
+          minLength: 10
+          maxLength: 1000
+        tagIds:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          maxItems: 5
+        photoURLs:
+          type: array
+          items:
+            type: string
+            format: uri
+          minItems: 1
+          maxItems: 5
+
+    LocationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 地點 ID
+        name:
+          type: string
+        address:
+          type: string
+        coordinates:
+          type: object
+          properties:
+            lat:
+              type: number
+            lng:
+              type: number
+        description:
+          type: string
+        tagIds:
+          type: array
+          items:
+            type: string
+        photoURLs:
+          type: array
+          items:
+            type: string
+            format: uri
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        submittedBy:
+          type: string
+          description: 提交者 User ID
+        submitterInfo:
+          $ref: '#/components/schemas/SubmitterInfo'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+        reviewedBy:
+          type: string
+          nullable: true
+        rejectionReason:
+          type: string
+          nullable: true
+
+    SubmitterInfo:
+      type: object
+      properties:
+        userId:
+          type: string
+        displayName:
+          type: string
+        isWildernessPartner:
+          type: boolean
+        formattedName:
+          type: string
+          description: 格式化顯示名稱（荒野夥伴為「團名-自然名」）
+
+    Tag:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+tags:
+  - name: 地點
+    description: 地點提交與編輯操作
+  - name: 標籤
+    description: 綠活標籤相關操作

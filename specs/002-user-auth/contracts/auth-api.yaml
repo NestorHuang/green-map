@@ -1,0 +1,201 @@
+openapi: 3.0.3
+info:
+  title: 使用者認證與個人檔案 API
+  description: |
+    Green Map South 使用者認證相關 API。
+    
+    注意：此專案使用 Firebase，大部分認證操作透過 Firebase SDK 直接進行，
+    而非傳統 REST API。此文件主要描述 Cloud Functions 的可呼叫函式。
+  version: 1.0.0
+
+servers:
+  - url: https://{region}-{project}.cloudfunctions.net
+    variables:
+      region:
+        default: asia-east1
+      project:
+        default: green-map-south
+
+paths:
+  /setWildernessPartner:
+    post:
+      summary: 設定荒野夥伴身份
+      description: |
+        更新使用者的 Custom Claims，設定 isWildernessPartner: true。
+        此為 Firebase Callable Function，需透過 Firebase SDK 呼叫。
+      operationId: setWildernessPartner
+      tags:
+        - 荒野夥伴
+      security:
+        - firebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WildernessPartnerRequest'
+      responses:
+        '200':
+          description: 成功設定荒野夥伴身份
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: 未認證
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: 請求參數錯誤
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /processAvatar:
+    post:
+      summary: 處理頭像（Cloud Function 觸發）
+      description: |
+        當使用者上傳頭像到 Storage 後自動觸發。
+        此為 Storage Trigger，非直接呼叫的 API。
+      operationId: processAvatar
+      tags:
+        - 頭像
+      responses:
+        '200':
+          description: 處理完成
+
+components:
+  securitySchemes:
+    firebaseAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Firebase ID Token
+
+  schemas:
+    WildernessPartnerRequest:
+      type: object
+      required:
+        - wildernessId
+        - chapter
+        - natureName
+      properties:
+        wildernessId:
+          type: string
+          description: 荒野編號
+          example: "SOW12345"
+        chapter:
+          type: string
+          description: 所屬分會
+          example: "台南分會"
+        natureName:
+          type: string
+          description: 自然名
+          example: "樹蛙"
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "荒野夥伴身份設定成功"
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "unauthenticated"
+            message:
+              type: string
+              example: "未登入"
+
+    UserDocument:
+      type: object
+      required:
+        - displayName
+        - email
+        - emailVerified
+        - isWildernessPartner
+        - createdAt
+        - updatedAt
+      properties:
+        displayName:
+          type: string
+          description: 顯示名稱
+          minLength: 2
+          maxLength: 50
+          example: "綠色小精靈"
+        email:
+          type: string
+          format: email
+          description: Email 地址
+          example: "user@example.com"
+        emailVerified:
+          type: boolean
+          description: Email 是否已驗證
+          example: true
+        photoURL:
+          type: string
+          format: uri
+          nullable: true
+          description: 頭像 URL (medium 尺寸)
+          example: "https://storage.googleapis.com/green-map-south.appspot.com/avatars/uid123/medium.jpg"
+        isWildernessPartner:
+          type: boolean
+          description: 是否為荒野夥伴
+          example: false
+        wildernessInfo:
+          $ref: '#/components/schemas/WildernessInfo'
+        createdAt:
+          type: string
+          format: date-time
+          description: 帳號建立時間
+        updatedAt:
+          type: string
+          format: date-time
+          description: 最後更新時間
+
+    WildernessInfo:
+      type: object
+      nullable: true
+      description: 荒野夥伴資訊（僅荒野夥伴有此欄位）
+      properties:
+        wildernessId:
+          type: string
+          description: 荒野編號
+          example: "SOW12345"
+        chapter:
+          type: string
+          description: 所屬分會
+          example: "台南分會"
+        natureName:
+          type: string
+          description: 自然名
+          example: "樹蛙"
+        filledAt:
+          type: string
+          format: date-time
+          description: 首次填寫時間
+        updatedAt:
+          type: string
+          format: date-time
+          description: 最後更新時間
+
+tags:
+  - name: 荒野夥伴
+    description: 荒野夥伴身份相關操作
+  - name: 頭像
+    description: 頭像處理相關操作

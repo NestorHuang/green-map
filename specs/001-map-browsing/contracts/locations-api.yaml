@@ -1,0 +1,208 @@
+openapi: 3.0.3
+info:
+  title: 地點瀏覽 API
+  description: Green Map South 地圖瀏覽功能的 API 合約（Firestore 資料結構）
+  version: 1.0.0
+
+servers:
+  - url: https://firestore.googleapis.com/v1/projects/{projectId}/databases/(default)/documents
+    description: Firestore REST API
+
+paths:
+  /locations:
+    get:
+      operationId: listApprovedLocations
+      summary: 取得所有已核准地點
+      description: 取得所有 status='approved' 的地點，用於地圖顯示
+      responses:
+        '200':
+          description: 成功取得地點列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Location'
+
+  /locations/{locationId}:
+    get:
+      operationId: getLocation
+      summary: 取得單一地點詳情
+      parameters:
+        - name: locationId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 地點 ID
+      responses:
+        '200':
+          description: 成功取得地點
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Location'
+        '404':
+          description: 地點不存在或未核准
+
+  /tags:
+    get:
+      operationId: listTags
+      summary: 取得所有標籤
+      description: 取得所有標籤，按 order 排序
+      responses:
+        '200':
+          description: 成功取得標籤列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tag'
+
+components:
+  schemas:
+    Location:
+      type: object
+      required:
+        - id
+        - name
+        - address
+        - coordinates
+        - tagIds
+        - status
+        - submitter
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          description: 地點唯一識別碼
+          example: "loc_abc123"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: 地點名稱
+          example: "綠活小舖"
+        address:
+          type: string
+          description: 完整地址
+          example: "高雄市前鎮區中山二路100號"
+        coordinates:
+          $ref: '#/components/schemas/GeoPoint'
+        description:
+          type: string
+          maxLength: 1000
+          description: 地點描述
+          example: "販售有機蔬果和環保生活用品的小店"
+        photos:
+          type: array
+          maxItems: 5
+          items:
+            type: string
+            format: uri
+          description: 照片 URL 陣列
+        tagIds:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          description: 標籤 ID 陣列
+          example: ["organic", "eco-friendly"]
+        status:
+          $ref: '#/components/schemas/LocationStatus'
+        submitter:
+          $ref: '#/components/schemas/SubmitterInfo'
+        createdAt:
+          type: string
+          format: date-time
+          description: 建立時間
+        updatedAt:
+          type: string
+          format: date-time
+          description: 更新時間
+
+    GeoPoint:
+      type: object
+      required:
+        - latitude
+        - longitude
+      properties:
+        latitude:
+          type: number
+          minimum: -90
+          maximum: 90
+          description: 緯度
+          example: 22.6273
+        longitude:
+          type: number
+          minimum: -180
+          maximum: 180
+          description: 經度
+          example: 120.3014
+
+    LocationStatus:
+      type: string
+      enum:
+        - pending
+        - approved
+        - rejected
+      description: |
+        地點審核狀態：
+        - pending: 待審核
+        - approved: 已核准（地圖可見）
+        - rejected: 已拒絕
+
+    SubmitterInfo:
+      type: object
+      required:
+        - userId
+        - displayName
+        - isWildernessPartner
+      properties:
+        userId:
+          type: string
+          description: 使用者 ID
+          example: "user123"
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: 顯示名稱
+          example: "小明"
+        isWildernessPartner:
+          type: boolean
+          description: 是否為荒野夥伴
+          example: true
+        groupName:
+          type: string
+          description: 團名（荒野夥伴專用）
+          example: "台南分會"
+        natureName:
+          type: string
+          description: 自然名（荒野夥伴專用）
+          example: "樹蛙"
+
+    Tag:
+      type: object
+      required:
+        - id
+        - name
+        - order
+      properties:
+        id:
+          type: string
+          description: 標籤唯一識別碼
+          example: "vegan"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 20
+          description: 標籤名稱
+          example: "全素/蔬食"
+        order:
+          type: integer
+          minimum: 1
+          description: 排序順序
+          example: 1

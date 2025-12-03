@@ -1,0 +1,445 @@
+openapi: 3.0.3
+info:
+  title: 動態地點類型 API
+  description: Green Map South 動態地點類型系統的 API 合約
+  version: 1.0.0
+
+servers:
+  - url: https://firestore.googleapis.com/v1/projects/{projectId}/databases/(default)/documents
+    description: Firestore REST API
+
+paths:
+  /location_types:
+    get:
+      operationId: listLocationTypes
+      summary: 取得所有地點類型
+      description: 取得所有啟用的地點類型列表，用於類型選擇和篩選
+      parameters:
+        - name: isActive
+          in: query
+          schema:
+            type: boolean
+          description: 篩選啟用狀態
+      responses:
+        '200':
+          description: 成功取得類型列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LocationType'
+    
+    post:
+      operationId: createLocationType
+      summary: 建立地點類型
+      description: 建立新的地點類型（僅超級管理員）
+      security:
+        - firebase: [superAdmin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLocationTypeRequest'
+      responses:
+        '201':
+          description: 類型建立成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationType'
+        '400':
+          description: 驗證錯誤
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '403':
+          description: 權限不足
+
+  /location_types/{typeId}:
+    parameters:
+      - name: typeId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: 類型 ID
+    
+    get:
+      operationId: getLocationType
+      summary: 取得單一類型
+      responses:
+        '200':
+          description: 成功取得類型
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationType'
+        '404':
+          description: 類型不存在
+    
+    put:
+      operationId: updateLocationType
+      summary: 更新地點類型
+      security:
+        - firebase: [superAdmin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLocationTypeRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationType'
+        '403':
+          description: 權限不足
+        '404':
+          description: 類型不存在
+    
+    delete:
+      operationId: deleteLocationType
+      summary: 刪除地點類型
+      description: 刪除類型，若有地點使用則需指定處理方式
+      security:
+        - firebase: [superAdmin]
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [deactivate, migrate]
+          description: 刪除動作
+        - name: targetTypeId
+          in: query
+          schema:
+            type: string
+          description: 轉移目標類型 ID（僅 migrate 時需要）
+      responses:
+        '200':
+          description: 刪除成功
+        '400':
+          description: 參數錯誤
+        '403':
+          description: 權限不足
+
+  /location_types/{typeId}/usage:
+    get:
+      operationId: getTypeUsage
+      summary: 取得類型使用統計
+      parameters:
+        - name: typeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 使用統計
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    description: 使用此類型的地點數量
+
+  /locations:
+    post:
+      operationId: submitLocation
+      summary: 提交地點
+      description: 提交新地點（需選擇類型）
+      security:
+        - firebase: [authenticated]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitLocationRequest'
+      responses:
+        '201':
+          description: 提交成功
+        '400':
+          description: 驗證錯誤
+
+components:
+  securitySchemes:
+    firebase:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Firebase ID Token
+
+  schemas:
+    LocationType:
+      type: object
+      required:
+        - id
+        - name
+        - icon
+        - color
+        - order
+        - isActive
+        - fieldSchema
+        - createdAt
+        - createdBy
+      properties:
+        id:
+          type: string
+          description: 類型唯一識別碼
+          example: "venue"
+        name:
+          type: string
+          minLength: 3
+          maxLength: 50
+          description: 類型名稱
+          example: "團集會場地"
+        description:
+          type: string
+          maxLength: 200
+          description: 類型描述
+          example: "適合舉辦團集會活動的場地"
+        icon:
+          type: string
+          description: Emoji 圖示
+          example: "🏢"
+        color:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+          description: 標記顏色 (HEX)
+          example: "#4CAF50"
+        order:
+          type: integer
+          minimum: 0
+          description: 排序順序
+          example: 1
+        isActive:
+          type: boolean
+          description: 是否啟用
+          example: true
+        fieldSchema:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/FieldSchema'
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+
+    FieldSchema:
+      type: object
+      required:
+        - fieldId
+        - label
+        - type
+        - required
+        - order
+        - displayInList
+        - displayInDetail
+      properties:
+        fieldId:
+          type: string
+          pattern: "^[a-z][a-zA-Z0-9]*$"
+          description: 欄位唯一識別碼 (camelCase)
+          example: "capacity"
+        label:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: 顯示標籤
+          example: "容納人數"
+        type:
+          $ref: '#/components/schemas/FieldType'
+        required:
+          type: boolean
+          description: 是否必填
+          example: true
+        order:
+          type: integer
+          minimum: 0
+          description: 顯示順序
+          example: 1
+        placeholder:
+          type: string
+          maxLength: 100
+          description: 提示文字
+          example: "請輸入可容納人數"
+        validation:
+          $ref: '#/components/schemas/ValidationRule'
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldOption'
+          description: 選項列表 (僅 select/multiSelect/radio/checkbox)
+        displayInList:
+          type: boolean
+          description: 是否在地圖標記顯示
+          example: true
+        displayInDetail:
+          type: boolean
+          description: 是否在詳情面板顯示
+          example: true
+
+    FieldType:
+      type: string
+      enum:
+        - text
+        - textarea
+        - number
+        - select
+        - multiSelect
+        - radio
+        - checkbox
+        - date
+        - time
+        - datetime
+        - boolean
+        - url
+      description: 欄位類型
+
+    ValidationRule:
+      type: object
+      properties:
+        min:
+          type: number
+          description: 最小值/長度
+        max:
+          type: number
+          description: 最大值/長度
+        pattern:
+          type: string
+          description: 正規表達式
+        minLength:
+          type: integer
+          description: 最小字元數
+        maxLength:
+          type: integer
+          description: 最大字元數
+
+    FieldOption:
+      type: object
+      required:
+        - value
+        - label
+      properties:
+        value:
+          type: string
+          description: 選項值
+          example: "projector"
+        label:
+          type: string
+          description: 顯示標籤
+          example: "投影設備"
+        disabled:
+          type: boolean
+          description: 是否停用
+          default: false
+
+    CreateLocationTypeRequest:
+      type: object
+      required:
+        - name
+        - icon
+        - color
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 50
+        description:
+          type: string
+          maxLength: 200
+        icon:
+          type: string
+        color:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+        fieldSchema:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/FieldSchema'
+
+    UpdateLocationTypeRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 50
+        description:
+          type: string
+          maxLength: 200
+        icon:
+          type: string
+        color:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+        order:
+          type: integer
+          minimum: 0
+        isActive:
+          type: boolean
+        fieldSchema:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/FieldSchema'
+
+    SubmitLocationRequest:
+      type: object
+      required:
+        - name
+        - address
+        - typeId
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        address:
+          type: string
+        description:
+          type: string
+        typeId:
+          type: string
+          description: 地點類型 ID
+        dynamicFields:
+          type: object
+          additionalProperties: true
+          description: 動態欄位值
+
+    ValidationError:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          example: "驗證錯誤"
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string

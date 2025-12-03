@@ -1,0 +1,544 @@
+openapi: 3.0.3
+info:
+  title: 管理員審核與管理 API
+  description: |
+    Green Map South 管理員後台相關 API。
+    
+    此 API 主要描述 Firestore 資料結構與 Cloud Function 呼叫，
+    實際操作透過 Firebase SDK 進行。
+  version: 1.0.0
+
+servers:
+  - url: https://firestore.googleapis.com/v1/projects/{project}/databases/(default)
+    variables:
+      project:
+        default: green-map-south
+
+paths:
+  # ========== 地點審核 ==========
+  /locations/pending:
+    get:
+      summary: 取得待審核地點列表
+      description: |
+        取得所有狀態為 `pending` 的地點列表，按提交時間倒序排列。
+        需要 Admin Custom Claim。
+        透過 Firebase SDK `getDocs()` 呼叫。
+      operationId: getPendingLocations
+      tags:
+        - 地點審核
+      security:
+        - firebaseAdminAuth: []
+      parameters:
+        - name: limit
+          in: query
+          description: 每頁筆數
+          schema:
+            type: integer
+            default: 20
+        - name: startAfter
+          in: query
+          description: 分頁游標（上一頁最後一筆的文件 ID）
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功取得待審核地點列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  locations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LocationWithReview'
+                  hasMore:
+                    type: boolean
+        '401':
+          description: 未認證
+        '403':
+          description: 無管理員權限
+
+  /locations/{locationId}/approve:
+    post:
+      summary: 核准地點
+      description: |
+        將地點狀態更新為 `approved`。
+        使用樂觀鎖定檢查版本號，若版本不一致則拒絕操作。
+        透過 Firebase SDK `runTransaction()` 呼叫。
+      operationId: approveLocation
+      tags:
+        - 地點審核
+      security:
+        - firebaseAdminAuth: []
+      parameters:
+        - name: locationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveLocationRequest'
+      responses:
+        '200':
+          description: 成功核准地點
+        '401':
+          description: 未認證
+        '403':
+          description: 無管理員權限
+        '409':
+          description: 版本衝突 - 此地點已被其他管理員審核
+        '404':
+          description: 地點不存在
+
+  /locations/{locationId}/reject:
+    post:
+      summary: 拒絕地點
+      description: |
+        將地點狀態更新為 `rejected`，需提供拒絕原因。
+        使用樂觀鎖定檢查版本號。
+        透過 Firebase SDK `runTransaction()` 呼叫。
+      operationId: rejectLocation
+      tags:
+        - 地點審核
+      security:
+        - firebaseAdminAuth: []
+      parameters:
+        - name: locationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectLocationRequest'
+      responses:
+        '200':
+          description: 成功拒絕地點
+        '400':
+          description: 拒絕原因格式錯誤
+        '401':
+          description: 未認證
+        '403':
+          description: 無管理員權限
+        '409':
+          description: 版本衝突
+        '404':
+          description: 地點不存在
+
+  # ========== 錯誤回報處理 ==========
+  /error_reports/pending:
+    get:
+      summary: 取得待處理回報列表
+      description: |
+        取得所有狀態為 `pending` 的錯誤回報列表。
+        需要 Admin Custom Claim。
+      operationId: getPendingReports
+      tags:
+        - 錯誤回報處理
+      security:
+        - firebaseAdminAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 成功取得待處理回報列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ErrorReportForAdmin'
+
+  /error_reports/{reportId}/resolve:
+    post:
+      summary: 處理回報（標記為已解決）
+      description: |
+        將回報狀態更新為 `resolved`。
+        通常在管理員編輯地點資訊後自動呼叫。
+      operationId: resolveReport
+      tags:
+        - 錯誤回報處理
+      security:
+        - firebaseAdminAuth: []
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveReportRequest'
+      responses:
+        '200':
+          description: 成功處理回報
+        '401':
+          description: 未認證
+        '403':
+          description: 無管理員權限
+
+  /error_reports/{reportId}/ignore:
+    post:
+      summary: 忽略回報
+      description: |
+        將回報狀態更新為 `ignored`，需提供備註說明原因。
+      operationId: ignoreReport
+      tags:
+        - 錯誤回報處理
+      security:
+        - firebaseAdminAuth: []
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IgnoreReportRequest'
+      responses:
+        '200':
+          description: 成功忽略回報
+        '400':
+          description: 備註格式錯誤
+        '401':
+          description: 未認證
+        '403':
+          description: 無管理員權限
+
+  # ========== 荒野夥伴驗證 ==========
+  /wilderness_verifications/pending:
+    get:
+      summary: 取得待驗證申請列表
+      description: |
+        取得所有狀態為 `pending` 的荒野夥伴驗證申請。
+        需要 Admin Custom Claim。
+      operationId: getPendingVerifications
+      tags:
+        - 荒野夥伴驗證
+      security:
+        - firebaseAdminAuth: []
+      responses:
+        '200':
+          description: 成功取得待驗證申請列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WildernessVerification'
+
+  /wilderness_verifications/{verificationId}/approve:
+    post:
+      summary: 核准荒野夥伴驗證
+      description: |
+        核准驗證申請，透過 Cloud Function 更新使用者 Custom Claims。
+        呼叫 `updateWildernessPartner` Cloud Function。
+      operationId: approveVerification
+      tags:
+        - 荒野夥伴驗證
+      security:
+        - firebaseAdminAuth: []
+      parameters:
+        - name: verificationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveVerificationRequest'
+      responses:
+        '200':
+          description: 成功核准驗證
+        '401':
+          description: 未認證
+        '403':
+          description: 無管理員權限
+        '500':
+          description: Cloud Function 執行失敗
+
+  /wilderness_verifications/{verificationId}/reject:
+    post:
+      summary: 拒絕荒野夥伴驗證
+      description: |
+        拒絕驗證申請，需提供拒絕原因。
+        不需要呼叫 Cloud Function，只更新 Firestore 文件。
+      operationId: rejectVerification
+      tags:
+        - 荒野夥伴驗證
+      security:
+        - firebaseAdminAuth: []
+      parameters:
+        - name: verificationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectVerificationRequest'
+      responses:
+        '200':
+          description: 成功拒絕驗證
+        '400':
+          description: 拒絕原因格式錯誤
+        '401':
+          description: 未認證
+        '403':
+          description: 無管理員權限
+
+  # ========== 統計 ==========
+  /admin/stats:
+    get:
+      summary: 取得管理員儀表板統計
+      description: |
+        取得待審核地點數、待處理回報數、待驗證夥伴數等統計資料。
+        使用 Firestore 即時監聽。
+      operationId: getAdminStats
+      tags:
+        - 統計
+      security:
+        - firebaseAdminAuth: []
+      responses:
+        '200':
+          description: 成功取得統計資料
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminStats'
+
+components:
+  securitySchemes:
+    firebaseAdminAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Firebase ID Token，需包含 `isAdmin: true` Custom Claim
+
+  schemas:
+    # ========== 請求 ==========
+    ApproveLocationRequest:
+      type: object
+      required:
+        - expectedVersion
+      properties:
+        expectedVersion:
+          type: integer
+          description: 預期的版本號（用於樂觀鎖定）
+
+    RejectLocationRequest:
+      type: object
+      required:
+        - expectedVersion
+        - rejectionReason
+      properties:
+        expectedVersion:
+          type: integer
+          description: 預期的版本號
+        rejectionReason:
+          type: string
+          description: 拒絕原因
+          minLength: 10
+          maxLength: 200
+
+    ResolveReportRequest:
+      type: object
+      properties:
+        adminNote:
+          type: string
+          description: 管理員備註（選填）
+          maxLength: 200
+
+    IgnoreReportRequest:
+      type: object
+      required:
+        - adminNote
+      properties:
+        adminNote:
+          type: string
+          description: 忽略原因備註
+          minLength: 10
+          maxLength: 200
+
+    ApproveVerificationRequest:
+      type: object
+      required:
+        - userId
+      properties:
+        userId:
+          type: string
+          description: 申請者的 User ID
+
+    RejectVerificationRequest:
+      type: object
+      required:
+        - rejectionReason
+      properties:
+        rejectionReason:
+          type: string
+          description: 拒絕原因
+          minLength: 10
+          maxLength: 200
+
+    # ========== 回應 ==========
+    LocationWithReview:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        address:
+          type: string
+        coordinates:
+          $ref: '#/components/schemas/GeoPoint'
+        description:
+          type: string
+        photos:
+          type: array
+          items:
+            type: string
+        tagIds:
+          type: array
+          items:
+            type: string
+        submittedBy:
+          type: string
+        submitterInfo:
+          $ref: '#/components/schemas/SubmitterInfo'
+        submittedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          description: 版本號（用於樂觀鎖定）
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+
+    SubmitterInfo:
+      type: object
+      properties:
+        displayName:
+          type: string
+        isWildernessPartner:
+          type: boolean
+        chapter:
+          type: string
+          nullable: true
+        natureName:
+          type: string
+          nullable: true
+
+    ErrorReportForAdmin:
+      type: object
+      properties:
+        id:
+          type: string
+        locationId:
+          type: string
+        locationName:
+          type: string
+        errorType:
+          type: string
+          enum: [closed, address_error, phone_error, description_mismatch, photo_mismatch, other]
+        description:
+          type: string
+          nullable: true
+        reportedBy:
+          type: string
+        reporterInfo:
+          type: object
+          properties:
+            displayName:
+              type: string
+        status:
+          type: string
+          enum: [pending, resolved, ignored]
+        createdAt:
+          type: string
+          format: date-time
+
+    WildernessVerification:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        userEmail:
+          type: string
+        wildernessNumber:
+          type: string
+        chapter:
+          type: string
+        natureName:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        appliedAt:
+          type: string
+          format: date-time
+
+    AdminStats:
+      type: object
+      properties:
+        pendingLocations:
+          type: integer
+          description: 待審核地點數
+        pendingReports:
+          type: integer
+          description: 待處理回報數
+        pendingVerifications:
+          type: integer
+          description: 待驗證夥伴數
+        approvedThisMonth:
+          type: integer
+          description: 本月核准地點數
+        urgentItems:
+          type: integer
+          description: 超過 3 天未處理的項目數
+
+    GeoPoint:
+      type: object
+      properties:
+        latitude:
+          type: number
+        longitude:
+          type: number
+
+tags:
+  - name: 地點審核
+    description: 審核使用者提交的地點
+  - name: 錯誤回報處理
+    description: 處理使用者回報的地點錯誤
+  - name: 荒野夥伴驗證
+    description: 驗證荒野夥伴身份申請
+  - name: 統計
+    description: 管理員儀表板統計資料

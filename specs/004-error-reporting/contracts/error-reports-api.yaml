@@ -1,0 +1,195 @@
+openapi: 3.0.3
+info:
+  title: 地點資訊錯誤回報 API
+  description: |
+    Green Map South 錯誤回報相關 API。
+    
+    此 API 主要描述 Firestore 資料結構，
+    實際操作透過 Firebase SDK 進行。
+  version: 1.0.0
+
+servers:
+  - url: https://firestore.googleapis.com/v1/projects/{project}/databases/(default)
+    variables:
+      project:
+        default: green-map-south
+
+paths:
+  /error_reports:
+    post:
+      summary: 提交錯誤回報
+      description: |
+        建立新的錯誤回報。需要已登入使用者，且需遵守 15 分鐘冷卻機制。
+        透過 Firebase SDK `addDoc()` 呼叫。
+      operationId: createErrorReport
+      tags:
+        - 錯誤回報
+      security:
+        - firebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateErrorReportRequest'
+      responses:
+        '200':
+          description: 成功提交回報
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorReportResponse'
+        '401':
+          description: 未認證
+        '400':
+          description: 請求參數錯誤或重複回報
+        '429':
+          description: 冷卻時間內，請稍後再試
+
+    get:
+      summary: 取得我的回報列表
+      description: |
+        取得當前使用者提交的所有錯誤回報。
+        透過 Firebase SDK `getDocs()` 呼叫。
+      operationId: getMyReports
+      tags:
+        - 錯誤回報
+      security:
+        - firebaseAuth: []
+      parameters:
+        - name: status
+          in: query
+          description: 篩選狀態
+          schema:
+            type: string
+            enum: [pending, resolved, ignored]
+      responses:
+        '200':
+          description: 成功取得回報列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ErrorReportResponse'
+
+  /error_reports/{reportId}:
+    get:
+      summary: 取得回報詳情
+      description: |
+        取得指定回報的詳細資訊。只能查看自己的回報。
+      operationId: getErrorReport
+      tags:
+        - 錯誤回報
+      security:
+        - firebaseAuth: []
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功取得回報
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorReportResponse'
+        '403':
+          description: 無權查看
+        '404':
+          description: 回報不存在
+
+components:
+  securitySchemes:
+    firebaseAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Firebase ID Token
+
+  schemas:
+    CreateErrorReportRequest:
+      type: object
+      required:
+        - locationId
+        - locationName
+        - errorType
+      properties:
+        locationId:
+          type: string
+          description: 被回報的地點 ID
+        locationName:
+          type: string
+          description: 被回報的地點名稱
+        errorType:
+          type: string
+          enum: [closed, address_error, phone_error, description_mismatch, photo_mismatch, other]
+          description: 錯誤類型
+        description:
+          type: string
+          description: 詳細說明（「其他」類型必填）
+          minLength: 10
+          maxLength: 500
+
+    ErrorReportResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 回報 ID
+        locationId:
+          type: string
+        locationName:
+          type: string
+        errorType:
+          type: string
+          enum: [closed, address_error, phone_error, description_mismatch, photo_mismatch, other]
+        description:
+          type: string
+          nullable: true
+        reportedBy:
+          type: string
+          description: 回報者 User ID
+        reporterInfo:
+          $ref: '#/components/schemas/ReporterInfo'
+        status:
+          type: string
+          enum: [pending, resolved, ignored]
+        createdAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: string
+          format: date-time
+          nullable: true
+        resolvedBy:
+          type: string
+          nullable: true
+        adminNote:
+          type: string
+          nullable: true
+          description: 管理員備註
+
+    ReporterInfo:
+      type: object
+      properties:
+        displayName:
+          type: string
+          description: 回報者顯示名稱
+
+    ErrorTypeOption:
+      type: object
+      properties:
+        value:
+          type: string
+          enum: [closed, address_error, phone_error, description_mismatch, photo_mismatch, other]
+        label:
+          type: string
+          description: 顯示標籤
+          example: "已歇業"
+
+tags:
+  - name: 錯誤回報
+    description: 地點資訊錯誤回報相關操作
