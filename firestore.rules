@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Tags - readable by all
+    match /tags/{tagId} {
+      allow read: if true;
+      allow write: if false; // Managed by Admin SDK only
+    }
+    
+    // Locations - approved locations readable by all, logged-in users can create
+    match /locations/{locationId} {
+      // Read: only approved locations
+      allow read: if resource.data.status == 'approved';
+      
+      // Create: logged-in users only, must be pending status
+      allow create: if request.auth != null
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.submitter.userId == request.auth.uid;
+      
+      // Update/Delete: admins only
+      allow update, delete: if request.auth != null 
+                            && request.auth.token.admin == true;
+    }
+  }
+}

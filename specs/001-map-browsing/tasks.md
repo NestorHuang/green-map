@@ -24,13 +24,13 @@
 
 **Purpose**: 專案初始化與基本結構建立
 
-- [ ] T001 建立專案結構，包含 src/components/, src/hooks/, src/services/, src/types/, src/utils/, src/contexts/, src/pages/ 目錄
-- [ ] T002 初始化 React 19 + Vite 7 + TypeScript 專案並安裝相依套件（react, react-dom, vite, typescript）
-- [ ] T003 [P] 安裝 Tailwind CSS 3 並配置 tailwind.config.js
-- [ ] T004 [P] 安裝 Firebase 12 相關套件（firebase）
-- [ ] T005 [P] 安裝 @react-google-maps/api 套件
-- [ ] T006 [P] 建立 .env.example 檔案，定義所需環境變數（VITE_FIREBASE_*, VITE_GOOGLE_MAPS_API_KEY）
-- [ ] T007 [P] 配置 TypeScript tsconfig.json，設定路徑別名 @/
+- [x] T001 建立專案結構，包含 src/components/, src/hooks/, src/services/, src/types/, src/utils/, src/contexts/, src/pages/ 目錄
+- [x] T002 初始化 React 19 + Vite 7 + TypeScript 專案並安裝相依套件（react, react-dom, vite, typescript）
+- [x] T003 [P] 安裝 Tailwind CSS 3 並配置 tailwind.config.js
+- [x] T004 [P] 安裝 Firebase 12 相關套件（firebase）
+- [x] T005 [P] 安裝 @react-google-maps/api 套件
+- [x] T006 [P] 建立 .env.example 檔案，定義所需環境變數（VITE_FIREBASE_*, VITE_GOOGLE_MAPS_API_KEY）
+- [x] T007 [P] 配置 TypeScript tsconfig.json，設定路徑別名 @/
 
 ---
 
@@ -40,17 +40,17 @@
 
 **⚠️ 重要**: 此階段完成前，不可開始任何使用者故事的工作
 
-- [ ] T008 建立 Firebase 初始化設定 src/lib/firebase.ts
-- [ ] T009 [P] 建立 Location 類型定義 src/types/location.ts（包含 Location, LocationWithLatLng, SubmitterInfo, LocationStatus）
-- [ ] T010 [P] 建立 Tag 類型定義 src/types/tag.ts
-- [ ] T011 [P] 建立共用元件 LoadingSpinner src/components/common/LoadingSpinner.tsx
-- [ ] T012 [P] 建立共用元件 ErrorMessage src/components/common/ErrorMessage.tsx
-- [ ] T013 建立 locationService src/services/locationService.ts（取得已核准地點列表）
-- [ ] T014 建立 tagService src/services/tagService.ts（取得標籤列表）
-- [ ] T015 建立格式化工具 src/utils/formatters.ts（包含 getSubmitterDisplay 函數）
-- [ ] T016 [P] 建立地圖輔助函數 src/utils/mapHelpers.ts（包含預設座標常數 TAIWAN_CENTER, TAIWAN_ZOOM）
-- [ ] T017 建立 Firestore 安全規則 firestore.rules（允許讀取 approved 地點和所有標籤）
-- [ ] T018 建立主應用程式入口 src/App.tsx 和 src/main.tsx
+- [x] T008 建立 Firebase 初始化設定 src/lib/firebase.ts
+- [x] T009 [P] 建立 Location 類型定義 src/types/location.ts（包含 Location, LocationWithLatLng, SubmitterInfo, LocationStatus）
+- [x] T010 [P] 建立 Tag 類型定義 src/types/tag.ts
+- [x] T011 [P] 建立共用元件 LoadingSpinner src/components/common/LoadingSpinner.tsx
+- [x] T012 [P] 建立共用元件 ErrorMessage src/components/common/ErrorMessage.tsx
+- [x] T013 建立 locationService src/services/locationService.ts（取得已核准地點列表）
+- [x] T014 建立 tagService src/services/tagService.ts（取得標籤列表）
+- [x] T015 建立格式化工具 src/utils/formatters.ts（包含 getSubmitterDisplay 函數）
+- [x] T016 [P] 建立地圖輔助函數 src/utils/mapHelpers.ts（包含預設座標常數 TAIWAN_CENTER, TAIWAN_ZOOM）
+- [x] T017 建立 Firestore 安全規則 firestore.rules（允許讀取 approved 地點和所有標籤）
+- [x] T018 建立主應用程式入口 src/App.tsx 和 src/main.tsx
 
 **Checkpoint**: 基礎設施就緒 - 使用者故事實作可以開始
 
@@ -64,13 +64,13 @@
 
 ### Implementation for User Story 1
 
-- [ ] T019 [US1] 建立 useGeolocation Hook src/hooks/useGeolocation.ts（GPS 定位邏輯，含超時和錯誤處理）
-- [ ] T020 [US1] 建立 MapContext src/contexts/MapContext.tsx（地圖全域狀態管理：中心點、縮放層級、選中地點）
-- [ ] T021 [US1] 建立 MapContainer 元件 src/components/map/MapContainer.tsx（Google Maps 容器，整合 GPS 定位）
+- [x] T019 [US1] 建立 useGeolocation Hook src/hooks/useGeolocation.ts（GPS 定位邏輯，含超時和錯誤處理）
+- [x] T020 [US1] 建立 MapContext src/contexts/MapContext.tsx（地圖全域狀態管理：中心點、縮放層級、選中地點）
+- [x] T021 [US1] 建立 MapContainer 元件 src/components/map/MapContainer.tsx（Google Maps 容器，整合 GPS 定位）
 - [ ] T022 [US1] 實作 GPS 權限請求與成功定位邏輯於 MapContainer
 - [ ] T023 [US1] 實作 GPS 失敗/拒絕時的友善提示訊息與回退邏輯（顯示台灣全島視圖）
 - [ ] T023.5 [US1] 實作手動地址輸入備援方案（GPS 失敗時顯示地址輸入框，複用 AddressSearch 元件）
-- [ ] T024 [US1] 建立 MapPage 主頁面 src/pages/MapPage.tsx（整合 MapContainer 和 GPS 狀態）
+- [x] T024 [US1] 建立 MapPage 主頁面 src/pages/MapPage.tsx（整合 MapContainer 和 GPS 狀態）
 
 **Checkpoint**: 使用者故事 1 完成 - 地圖可定位或顯示預設位置
 
@@ -84,17 +84,17 @@
 
 ### Implementation for User Story 2
 
-- [ ] T025 [US2] 建立 useLocations Hook src/hooks/useLocations.ts（即時監聽 Firestore 已核准地點）
-- [ ] T026 [US2] 建立 useTags Hook src/hooks/useTags.ts（取得標籤列表）
-- [ ] T027 [P] [US2] 建立 PhotoCarousel 元件 src/components/location/PhotoCarousel.tsx（CSS Scroll Snap 照片輪播）
-- [ ] T028 [P] [US2] 建立 SubmitterInfo 元件 src/components/location/SubmitterInfo.tsx（登錄者資訊顯示，含「團名-自然名」格式）
-- [ ] T029 [US2] 建立 LocationMarker 元件 src/components/map/LocationMarker.tsx（地圖標記）
-- [ ] T030 [US2] 建立 LocationDetail 元件 src/components/map/LocationDetail.tsx（底部彈出詳情面板）
+- [x] T025 [US2] 建立 useLocations Hook src/hooks/useLocations.ts（即時監聽 Firestore 已核准地點）
+- [x] T026 [US2] 建立 useTags Hook src/hooks/useTags.ts（取得標籤列表）
+- [x] T027 [P] [US2] 建立 PhotoCarousel 元件 src/components/location/PhotoCarousel.tsx（CSS Scroll Snap 照片輪播）
+- [x] T028 [P] [US2] 建立 SubmitterInfo 元件 src/components/location/SubmitterInfo.tsx（登錄者資訊顯示，含「團名-自然名」格式）
+- [x] T029 [US2] 建立 LocationMarker 元件 src/components/map/LocationMarker.tsx（地圖標記）
+- [x] T030 [US2] 建立 LocationDetail 元件 src/components/map/LocationDetail.tsx（底部彈出詳情面板）
 - [ ] T031 [US2] 實作詳情面板多種關閉方式：行動裝置向下滑動手勢 + 關閉按鈕(X)；桌面版點擊外部區域 + 關閉按鈕（對應 FR-012）
 - [ ] T032 [US2] [已合併至 T031] ~~實作詳情面板關閉按鈕和點擊外部關閉（桌面版）~~
-- [ ] T033 [US2] 實作照片載入失敗時顯示預設佔位圖片（對應 FR-015）
+- [x] T033 [US2] 實作照片載入失敗時顯示預設佔位圖片（對應 FR-015）
 - [ ] T034 [US2] 實作「回報此地點資訊有誤」按鈕（僅已登入使用者顯示，按鈕邏輯為預留，實際功能在後續功能實作）
-- [ ] T035 [US2] 整合 LocationMarker 和 LocationDetail 到 MapContainer
+- [x] T035 [US2] 整合 LocationMarker 和 LocationDetail 到 MapContainer
 
 **Checkpoint**: 使用者故事 1 和 2 完成 - MVP 可獨立運作
 
@@ -108,9 +108,9 @@
 
 ### Implementation for User Story 3
 
-- [ ] T036 [US3] 建立 AddressSearch 元件 src/components/map/AddressSearch.tsx（Google Places Autocomplete）
-- [ ] T037 [US3] 配置 Autocomplete 限制為台灣地區（componentRestrictions: { country: 'tw' }）
-- [ ] T038 [US3] 配置 Autocomplete 搜尋類型為營業場所（types: ['establishment']）
+- [x] T036 [US3] 建立 AddressSearch 元件 src/components/map/AddressSearch.tsx（Google Places Autocomplete）
+- [x] T037 [US3] 配置 Autocomplete 限制為台灣地區（componentRestrictions: { country: 'tw' }）
+- [x] T038 [US3] 配置 Autocomplete 搜尋類型為營業場所（types: ['establishment']）
 - [ ] T039 [US3] 實作地址選擇後地圖移動並放大邏輯
 - [ ] T040 [US3] 整合 AddressSearch 到 MapPage 頂部
 
@@ -126,11 +126,11 @@
 
 ### Implementation for User Story 4
 
-- [ ] T041 [US4] 建立 TagFilter 元件 src/components/map/TagFilter.tsx（水平滾動標籤列）
-- [ ] T042 [US4] 實作標籤選擇邏輯（單選，點擊同一標籤或「全部」取消篩選）
-- [ ] T043 [US4] 實作選中標籤的視覺高亮顯示（綠色背景）
-- [ ] T044 [US4] 實作客戶端標籤篩選邏輯於 MapContainer
-- [ ] T045 [US4] 整合 TagFilter 到 MapPage
+- [x] T041 [US4] 建立 TagFilter 元件 src/components/map/TagFilter.tsx（水平滾動標籤列）
+- [x] T042 [US4] 實作標籤選擇邏輯（單選，點擊同一標籤或「全部」取消篩選）
+- [x] T043 [US4] 實作選中標籤的視覺高亮顯示（綠色背景）
+- [x] T044 [US4] 實作客戶端標籤篩選邏輯於 MapContainer
+- [x] T045 [US4] 整合 TagFilter 到 MapPage
 
 **Checkpoint**: 使用者故事 4 完成 - 標籤篩選功能可用
 
@@ -144,7 +144,7 @@
 - [ ] T047 [P] 確保所有觸控目標至少 44x44px
 - [ ] T048 效能優化：確保地圖載入 < 3s、標記點擊回應 < 200ms
 - [ ] T049 [P] 新增無障礙輔助屬性（aria-label, role 等）
-- [ ] T050 建立種子資料腳本 scripts/seedTags.ts（初始化預設標籤）
+- [x] T050 建立種子資料腳本 scripts/seedTags.ts（初始化預設標籤）
 - [ ] T051 執行 quickstart.md 測試檢查清單驗證
 - [ ] T052 [P] 程式碼清理與重構
 
